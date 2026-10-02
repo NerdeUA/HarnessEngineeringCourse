@@ -42,22 +42,25 @@ make run  →  scripts/setup.sh
   → tofu apply (bootstrap/)
       → KinD cluster
       → Flux Operator + FluxInstance   via the upstream flux-operator-bootstrap module
-      → ResourceSetInputProvider   polls oci://ghcr.io/den-vasyliev/abox/releases
+      → ResourceSetInputProvider   polls oci://ghcr.io/nerdeua/harnessengineeringcourse/abox/releases-llmd-embeddings
       → ResourceSet                creates OCIRepository + 2 Kustomizations
           → releases/crds/    gateway-api-crds, agentgateway-crds, kagent-crds
           → releases/         agentgateway (Gateway + GatewayClass)
                               kagent (agent runtime + HTTPRoute)
 ```
 
-Everything after the cluster is **gitless GitOps via OCI**: no Git polling, no deploy keys. CI publishes `releases/` as an OCI artifact on every version tag. The cluster reconciles from that artifact automatically.
+Everything after the cluster is **gitless GitOps via OCI**: no Git polling, no deploy keys. The course-root GitHub Actions workflow publishes `releases/` only for an explicit `abox-vX.Y.Z` tag. The cluster reconciles that course-owned artifact automatically.
 
 ## Releasing
 
+From the `HarnessEngineeringCourse` root, after reviewing the source and confirming the GHCR package is readable by the cluster:
+
 ```bash
-make push   # bumps patch version, tags, pushes → CI publishes OCI artifact → cluster reconciles
+git tag abox-v0.1.0
+git push origin abox-v0.1.0
 ```
 
-> **Note:** RSIP tag sorting is lexicographic. If the patch version would exceed 9, bump the minor instead: `git tag vX.Y+1.0`.
+This tag runs `../../.github/workflows/publish-abox-oci.yaml`; it does not commit or push to the separate upstream `abox` repository. Do not run the upstream `make push` target from this vendored copy.
 
 ## Directory layout
 
@@ -69,7 +72,7 @@ make push   # bumps patch version, tags, pushes → CI publishes OCI artifact �
 | `releases/` | App HelmReleases + Gateway + HTTPRoutes |
 | `images/nomic-embed/` | Dockerfile baking nomic-embed-text-v1.5 into llama.cpp server |
 | `scripts/setup.sh` | Full setup script (`make run`) |
-| `.github/workflows/flux-push.yaml` | CI: publish `releases/` as OCI artifact on `v*` tags |
+| `../../.github/workflows/publish-abox-oci.yaml` | Course CI: publish `releases/` as a versioned OCI artifact |
 
 ## Embeddings: two backends
 

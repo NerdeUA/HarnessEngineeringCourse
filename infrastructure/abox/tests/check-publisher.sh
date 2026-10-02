@@ -20,6 +20,14 @@ require "^abox-v(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"
 require "flux pull artifact"
 require "flux push artifact"
 require "GITHUB_TOKEN"
+if grep -Eq '^make push([[:space:]]|$)' "$root/infrastructure/abox/README.md"; then
+  echo 'FAIL: vendored ABox README must not execute the upstream ABox release target' >&2
+  exit 1
+fi
+grep -Fq -- 'git tag abox-v0.1.0' "$root/infrastructure/abox/README.md" || {
+  echo 'FAIL: vendored ABox README is missing the course-only release example' >&2
+  exit 1
+}
 
 if grep -Eq -- '--tag[ =]+latest|:[[:space:]]*latest|permissions:[[:space:]]*write-all' "$workflow"; then
   echo 'FAIL: publisher uses a floating tag or broad permissions' >&2

@@ -36,13 +36,13 @@
 
 **Files:**
 - Read only: `abox/` checkout and its Git refs; `docs/lab-4/`; `docs/lab-7/`.
-- Create: `docs/superpowers/plans/branch-inventory-2026-10-02.md` (if a durable exact file manifest is useful; otherwise record paths in this plan during execution).
+- Record: exact path/provenance allowlist in the plan-scoped execution ledger under `.superpowers/sdd/2026-10-02-abox-course-vendor/progress.md`.
 
 **Interfaces:**
 - Consumes: local refs `origin/feat/llmd-embeddings`, `origin/feat/otel-demo`, `origin/main`.
 - Produces: an explicit allowlist of source paths and per-path source branch, with conflicts resolved for shared manifests.
 
-- [ ] **Step 1: Capture read-only status and branch deltas**
+- [x] **Step 1: Capture read-only status and branch deltas**
 
 Run from the course root:
 
@@ -54,13 +54,13 @@ git -C abox diff --name-status origin/feat/llmd-embeddings..origin/main
 
 Expected: the pre-existing dirty ABox paths remain untouched; no copy command targets `.git`, `.terraform`, or `bootstrap/abox-config`.
 
-- [ ] **Step 2: Inspect only candidate source files and the Lab 7 working manifests**
+- [x] **Step 2: Inspect only candidate source files and the Lab 7 working manifests**
 
 For every changed release/bootstrap/workflow path, inspect both versions with `git show <ref>:<path>`. Compare the rendered resource names and versions against current `docs/lab-7/` evidence. Mark each candidate `take`, `merge`, or `exclude` with rationale.
 
 Expected: no whole-branch overlay; `triage`, `xray-memory`, Astronomy Shop, and duplicate backends are excluded absent a demonstrated Lab 7 dependency.
 
-- [ ] **Step 3: Verify branch ancestry and locate both Flux corrections**
+- [x] **Step 3: Verify branch ancestry and locate both Flux corrections**
 
 Run:
 
@@ -71,7 +71,7 @@ git -C abox log -p origin/feat/llmd-embeddings..origin/main -- '*flux*' '*releas
 
 Expected: confirm `feat/llmd-embeddings` already contains the branch-aware artifact repository selection from `main`, and locate the minimal `semver: ">=0.0.0"` comparator on `feat/otel-demo`; do not import its branch default or unrelated `main` edits.
 
-- [ ] **Step 4: Record the allowlist and conflict decisions**
+- [x] **Step 4: Record the allowlist and conflict decisions**
 
 Write the source-branch mapping and excluded paths into the inventory document or this plan before copying. Include shared paths `releases/kustomization.yaml`, `releases/phoenix.yaml`, `bootstrap/flux.tf`, `bootstrap/variables.tf`, and release workflows. Explicitly include the tested `docs/lab-7/manifests/{namespace,jaeger,mlflow,otel-collector,kustomization}.yaml` as vendor inputs; exclude duplicate `feat/otel-demo` MLflow/Collector resources.
 
@@ -87,7 +87,7 @@ Expected: every copied source file has a known provenance and no unreviewed conf
 - Consumes: Task 1's reviewed allowlist.
 - Produces: a self-contained, non-nested-repository ABox source tree based on deployed Lab 4 release structure.
 
-- [ ] **Step 1: Verify destination is absent or empty without deleting anything**
+- [x] **Step 1: Verify destination is absent or empty without deleting anything**
 
 Run:
 
@@ -97,25 +97,25 @@ test ! -e infrastructure/abox || find infrastructure/abox -maxdepth 2 -type f -p
 
 Expected: if non-empty, stop and inspect; do not overwrite user data. If absent, continue.
 
-- [ ] **Step 2: Copy only allowlisted tracked files from the feature baseline**
+- [x] **Step 2: Copy only allowlisted tracked files from the feature baseline**
 
 Use `git archive origin/feat/llmd-embeddings <allowlisted paths>` or an equivalent path-scoped export into a temporary directory, then copy the reviewed files into `infrastructure/abox/`. Never copy `.git`, `.terraform`, local config, or untracked files.
 
 Expected: baseline provides Lab 4 retrieval agent, embedding model, Qdrant MCP, and its release/bootstrap source.
 
-- [ ] **Step 3: Merge required OTel/MLflow deltas path by path**
+- [x] **Step 3: Add the tested Lab 7 backend manifests to the vendor bundle**
 
-Copy only reviewed Collector/MLflow/OTel support files from `origin/feat/otel-demo`. For each shared file, manually merge the Lab 7 tested definition with the branch delta; retain a single Collector, MLflow, and Phoenix deployment in `releases/kustomization.yaml`.
+Copy `namespace.yaml`, `jaeger.yaml`, `mlflow.yaml`, `otel-collector.yaml`, and `kustomization.yaml` from `docs/lab-7/manifests/` into `infrastructure/abox/releases/lab7/`. Do not copy `feat/otel-demo`'s MLflow or Collector HelmReleases because they duplicate these resources and are configured for different telemetry sources.
 
-Expected: no unrelated demo/xray/triage resources and no duplicate Kustomize identities.
+Expected: the same already-tested Lab 7 Collector and MLflow definitions are available in the release bundle; no unrelated demo/xray/triage resources are copied.
 
-- [ ] **Step 4: Apply the compatible semver fix and Lab 7 kagent settings**
+- [x] **Step 4: Keep release configuration changes test-first**
 
-Port only `semver: ">=0.0.0"` from `origin/feat/otel-demo` into `infrastructure/abox/bootstrap/flux.tf`. Preserve the branch-aware repository selection from the feature baseline. Set both relevant kagent components to OTLP/gRPC endpoint for the existing `lab7` Collector and set sensitive-content capture false in `infrastructure/abox/releases/kagent.yaml`.
+Do not alter the copied release/bootstrap configuration in this task. Task 3 first adds and runs the failing source contract check, then adds the lab7 parent resource, the `semver: ">=0.0.0"` comparator from `origin/feat/otel-demo`, and the tracing values from `docs/lab-7/manifests/kagent-tracing-values.yaml`.
 
-Expected: semver ordering selects the intended newest compatible course release without mixing branch artifact streams; rendered kagent values enable tracing without sensitive content.
+Expected: the test-first step makes all Lab 4, Lab 7, semver, and tracing requirements independently verifiable.
 
-- [ ] **Step 5: Verify the vendor tree's provenance and hygiene**
+- [x] **Step 5: Verify the vendor tree's provenance and hygiene**
 
 Run:
 
@@ -134,25 +134,25 @@ Expected: first command prints nothing; only intended new course paths appear in
 
 **Interfaces:**
 - Consumes: vendored source tree.
-- Produces: a shell check returning nonzero for missing Lab 4/Lab 7 resources, duplicate backend declarations, a floating image/tag reference, or sensitive capture enabled.
+- Produces: a shell check returning nonzero for missing Lab 4 baseline resources or Lab 7 resources, duplicate rendered identities, a branch-mixed release selector, or sensitive capture enabled. The course-owned official Qdrant MCP overlay remains documented under `docs/lab-4/` and is not substituted for the feature branch's baseline MCP.
 
-- [ ] **Step 1: Write the failing shell assertions**
+- [x] **Step 1: Write the failing shell assertions**
 
-The script must assert the retrieval agent, embedding model, official Qdrant MCP, Jaeger, Phoenix, MLflow, and OTel Collector are declared; exactly one Collector and MLflow release identity exists; kagent has the expected `lab7` OTLP endpoint and `otel.captureSensitiveContent=false`; and the release input is version-pinned.
+The script must assert the retrieval agent, embedding model, feature-branch Qdrant MCP, Jaeger, Phoenix, MLflow, and OTel Collector are declared; exactly one rendered resource identity exists per kind/namespace/name; kagent has the expected `lab7` OTLP endpoint and `otel.captureSensitiveContent=false`; and the release input uses a semver selector in its branch-specific OCI repository.
 
-- [ ] **Step 2: Run the check against the source bundle**
+- [x] **Step 2: Run the check against the source bundle**
 
 Run: `bash infrastructure/abox/tests/check-release-source.sh`
 
 Expected: FAIL first if any acceptance value is absent; fix only the owning manifests.
 
-- [ ] **Step 3: Make the minimal manifest changes and rerun**
+- [x] **Step 3: Make the minimal manifest changes and rerun**
 
-Run: `bash infrastructure/abox/tests/check-release-source.sh`
+Add `- lab7` to `releases/kustomization.yaml`, port `semver: ">=0.0.0"` to the branch-specific ResourceSet filter in `bootstrap/flux.tf`, and merge the `otel` mapping from the checked-in kagent tracing values snippet into `releases/kagent.yaml`. Run: `bash infrastructure/abox/tests/check-release-source.sh`.
 
-Expected: PASS with a concise result and no secret values printed.
+Expected: PASS with a concise result and no secret values printed; the feature baseline's repository path remains unchanged.
 
-- [ ] **Step 4: Render the release bundle and check uniqueness**
+- [x] **Step 4: Render the release bundle and check uniqueness**
 
 Use installed `kustomize build infrastructure/abox/releases` or `kubectl kustomize infrastructure/abox/releases`; parse resource `kind/namespace/name` identities and fail on duplicates. Review the output for unrelated branch workloads.
 
@@ -162,28 +162,28 @@ Expected: render succeeds and every resource identity occurs once.
 
 **Files:**
 - Create: `.github/workflows/publish-abox-oci.yaml`.
-- Create: `infrastructure/abox/README.md` (source ownership and release operation).
+- Modify additively: `infrastructure/abox/README.md` (preserve upstream content, add course source ownership and release operation).
 - Create: `infrastructure/abox/tests/check-publisher.sh`.
 
 **Interfaces:**
 - Consumes: `infrastructure/abox/releases/` and explicit tags matching `abox-vX.Y.Z`.
 - Produces: GHCR artifact `ghcr.io/nerdeua/harnessengineeringcourse/abox/releases-llmd-embeddings:<version>` (confirm GitHub's canonical package naming before adopting exact path) built from the vendored release directory with `packages: write` permission.
 
-- [ ] **Step 1: Write publisher contract assertions**
+- [x] **Step 1: Write publisher contract assertions**
 
 Assert workflow triggers only on `abox-v*` tags and manual dispatch; checks out the tagged course commit; uses least-privilege `contents: read` and `packages: write`; installs/pins Flux CLI; pushes only `infrastructure/abox/releases/`; derives an immutable version tag; and contains no credentials other than GitHub's scoped token.
 
-- [ ] **Step 2: Run the publisher check and confirm expected failure**
+- [x] **Step 2: Run the publisher check and confirm expected failure**
 
 Run: `bash infrastructure/abox/tests/check-publisher.sh`
 
 Expected: FAIL because workflow/docs are not yet present.
 
-- [ ] **Step 3: Implement workflow, source README, and release tag guard**
+- [x] **Step 3: Implement workflow, source README, and release tag guard**
 
 Use the existing upstream `flux push artifact` pattern but set repository root, OCI URL, source path, and semantic version explicitly. Prevent malformed or floating tags. Do not push a tag in this step.
 
-- [ ] **Step 4: Rerun checks and inspect workflow permissions**
+- [x] **Step 4: Rerun checks and inspect workflow permissions**
 
 Run: `bash infrastructure/abox/tests/check-publisher.sh` and inspect `git diff -- .github/workflows/publish-abox-oci.yaml`.
 
@@ -202,29 +202,29 @@ Expected: PASS; workflow cannot write repository contents or deploy to Kubernete
 - Consumes: selected course artifact URL and pinned release version variable.
 - Produces: new clusters configure the course OCI artifact and its ResourceSet input provider, with documented rollback to upstream artifact.
 
-- [ ] **Step 1: Add failing assertions for bootstrap source ownership and pinning**
+- [x] **Step 1: Add failing assertions for bootstrap source ownership and pinning**
 
 Check that Terraform/OpenTofu defaults identify the course artifact, accept an explicit immutable version, preserve two-phase CRD/application Kustomization dependencies, and do not contain tokens. Also assert the existing course README text remains present.
 
-- [ ] **Step 2: Run the check before implementation**
+- [x] **Step 2: Run the check before implementation**
 
 Run: `bash infrastructure/abox/tests/check-bootstrap-source.sh`
 
 Expected: FAIL until defaults and docs are updated.
 
-- [ ] **Step 3: Update OpenTofu variables and Flux ResourceSet inputs**
+- [x] **Step 3: Update OpenTofu variables and Flux ResourceSet inputs**
 
 Set a course-owned OCI repository default and parameterize its version; retain the existing two-phase structure and dependencies. Do not change the live cluster yet.
 
-- [ ] **Step 4: Document release, access, migration gates, and rollback**
+- [x] **Step 4: Document release, access, migration gates, and rollback**
 
 Explain GitHub package visibility; anonymous pull verification; if private, requirement for a read-only GHCR secret in `flux-system` with secret value injected out of band; exact tag and publisher flow; Flux readiness checks; and rollback to the recorded upstream artifact/version. Preserve unrelated README content.
 
-- [ ] **Step 5: Run bootstrap assertions and OpenTofu validation**
+- [x] **Step 5: Run bootstrap assertions and OpenTofu validation**
 
 Run: `bash infrastructure/abox/tests/check-bootstrap-source.sh`, then `tofu -chdir=infrastructure/abox/bootstrap fmt -check` and `tofu -chdir=infrastructure/abox/bootstrap validate` when provider/plugin access is available.
 
-Expected: checks pass; validation reports no syntax/module errors. Do not initialize by downloading large providers if disk is constrained; use already available cache or report limitation.
+Expected: checks pass; validation reports no syntax/module errors. Do not initialize by downloading large providers if disk is constrained; use already available cache or report limitation. Executed `tofu init -backend=false -lockfile=readonly` in the isolated temporary worktree, followed by a passing `tofu validate`.
 
 ### Task 6: Validate artifact access and request release authorization
 
@@ -236,13 +236,17 @@ Expected: checks pass; validation reports no syntax/module errors. Do not initia
 - Consumes: reviewed vendor source, tests, course repository credentials, GHCR metadata.
 - Produces: explicit readiness decision to publish/switch or a clear blocker; does not alter ABox repository.
 
-- [ ] **Step 1: Check local state, permissions, disk, and current Flux source**
+- [x] **Step 1: Check local state, permissions, disk, and current Flux source**
 
 Use read-only commands: `git status --short`, `df -h`, and Flux/cluster reads to record current OCI URL, tag, readiness, and whether current GHCR package allows anonymous pull. Do not print secrets.
+
+Observed baseline: the running OCIRepository is Ready on upstream tag `0.9.5`; `releases-crds` is Ready; the app `releases` Kustomization is not Ready because Phoenix HelmRelease timed out waiting for its Deployment. Phoenix and PostgreSQL pods are currently Running/Ready, but the HelmRelease remains Failed. The new GHCR package is not published yet; unauthenticated direct registry request returns an auth challenge (401), which does not establish its eventual visibility.
 
 - [ ] **Step 2: Verify GitHub Actions and package settings without creating a release**
 
 Confirm course repo Actions are enabled, workflow can receive `packages: write`, and package namespace/visibility policy. If package cannot be public, stop before cluster switch and request provision of a read-only GHCR pull secret (never request its value in chat or Git).
+
+This verification remains pending: `gh` is unavailable in the environment, and the new package does not exist until its first approved publication.
 
 - [ ] **Step 3: Run all static checks and review exact diff**
 
