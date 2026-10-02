@@ -1,0 +1,87 @@
+name: Publish course-owned ABox OCI artifact
+
+on:
+  push:
+    tags:
+      - 'abox-v*'
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Existing course tag to publish (for example abox-v0.1.0)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: publish-abox-oci-${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref_name }}
+  cancel-in-progress: false
+
+env:
+  OCI_ARTIFACT: ghcr.io/nerdeua/harnessengineeringcourse/abox/releases-llmd-embeddings
+  RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref_name }}
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout the exact release tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref }}
+          fetch-depth: 0
+
+      - name: Validate immutable version tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ ! "$RELEASE_TAG" =~ ^abox-v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+            echo "Invalid ABox release tag: $RELEASE_TAG" >&2
+            exit 1
+          fi
+          if [[ "$(git rev-parse HEAD)" != "$(git rev-parse "$RELEASE_TAG^{commit}")" ]]; then
+            echo "Checked-out commit does not match $RELEASE_TAG" >&2
+            exit 1
+          fi
+          echo "ARTIFACT_VERSION=${RELEASE_TAG#abox-v}" >> "$GITHUB_ENV"
+          echo "SOURCE_SHA=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+
+      - name: Install pinned Flux CLI
+        uses: fluxcd/flux2/action@v2.9.6
+        with:
+          version: '2.9.6'
+
+      - name: Authenticate to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Refuse to overwrite an existing version
+        shell: bash
+        run: |
+          set -euo pipefail
+          existing="$(mktemp -d)"
+          trap 'rm -rf "$existing"' EXIT
+          if flux pull artifact "oci://${OCI_ARTIFACT}:${ARTIFACT_VERSION}" --output "$existing/content"; then
+            echo "Artifact version ${ARTIFACT_VERSION} already exists; release tags cannot be overwritten." >&2
+            exit 1
+          fi
+
+      - name: Publish the release bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          digest="$(flux push artifact "oci://${OCI_ARTIFACT}:${ARTIFACT_VERSION}" \
+            --path="./infrastructure/abox/releases" \
+            --source="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}" \
+            --revision="${RELEASE_TAG}@sha1:${SOURCE_SHA}" \
+            --output=json | jq -er '.digest')"
+          {
+            echo "### ABox OCI artifact published"
+            echo "- Source tag: `${RELEASE_TAG}`"
+            echo "- Artifact: `oci://${OCI_ARTIFACT}:${ARTIFACT_VERSION}@${digest}`"
+          } >> "$GITHUB_STEP_SUMMARY"
