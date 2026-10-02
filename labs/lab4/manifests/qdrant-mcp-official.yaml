@@ -1,0 +1,77 @@
+apiVersion: kagent.dev/v1alpha1
+kind: MCPServer
+metadata:
+  name: qdrant-minilm
+  namespace: kagent
+spec:
+  transportType: stdio
+  stdioTransport: {}
+  deployment:
+    image: qdrant-mcp-official:0.8.1
+    imagePullPolicy: IfNotPresent
+    cmd: mcp-server-qdrant
+    env:
+      QDRANT_URL: http://qdrant.qdrant:6333
+      COLLECTION_NAME: abox-minilm
+      EMBEDDING_MODEL: sentence-transformers/all-MiniLM-L6-v2
+      TOOL_STORE_DESCRIPTION: >-
+        Store one course corpus record in the MiniLM comparison collection.
+        Put the searchable prose in information and source, kind, namespace,
+        and object name in metadata.
+      TOOL_FIND_DESCRIPTION: >-
+        Search the MiniLM comparison collection for records matching a natural
+        language query. Return the source metadata with each relevant result.
+    resources:
+      requests:
+        cpu: 200m
+        memory: 512Mi
+      limits:
+        cpu: "1"
+        memory: 1Gi
+---
+apiVersion: kagent.dev/v1alpha2
+kind: Agent
+metadata:
+  name: retrieval-agent-official
+  namespace: kagent
+spec:
+  type: Declarative
+  description: Retrieves Kubernetes records through the official Qdrant MCP and MiniLM.
+  declarative:
+    modelConfig: default-model-config
+    stream: true
+    systemMessage: |
+      You answer questions only from the indexed Kubernetes course corpus.
+
+      The official Qdrant MCP is the retrieval interface for this agent:
+      - Use qdrant-store to index information into the MiniLM collection.
+      - Use qdrant-find to retrieve records for a question.
+      - Keep the returned source metadata with every result and cite it in the
+        answer. Do not invent missing fields or infer that an object is absent
+        from one empty vector search.
+
+      During an explicit ingest request, ask k8s-agent for the requested
+      declared Kubernetes manifests, then store each record's descriptive
+      prose with source, kind, namespace, and name metadata. Do not index
+      controller-generated Deployments, Pods, or Secrets unless explicitly
+      requested.
+
+      This agent uses the official MiniLM MCP only. Do not call the default
+      Qdrant MCP or mix records from its abox-nomic collection into answers.
+      The default-MCP baseline is the separate retrieval-agent in namespace
+      kagent.
+    tools:
+      - type: McpServer
+        mcpServer:
+          apiGroup: kagent.dev
+          kind: MCPServer
+          name: qdrant-minilm
+          toolNames:
+            - qdrant-store
+            - qdrant-find
+      - type: Agent
+        agent:
+          apiGroup: kagent.dev
+          kind: Agent
+          name: k8s-agent
+          namespace: kagent
