@@ -22,6 +22,12 @@ variable "oci_registry" {
   default     = "oci://ghcr.io/nerdeua/harnessengineeringcourse/abox"
 }
 
+variable "oci_pull_secret_name" {
+  description = "Optional existing dockerconfigjson Secret name in flux-system for private OCI artifact access"
+  type        = string
+  default     = null
+}
+
 variable "releases_artifact" {
   description = "OCI repository holding the releases artifact, under var.oci_registry"
   type        = string

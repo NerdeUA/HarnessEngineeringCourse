@@ -40,6 +40,10 @@ resource "kubectl_manifest" "rsip" {
     spec:
       type: OCIArtifactTag
       url: ${var.oci_registry}/${var.releases_artifact}
+%{if var.oci_pull_secret_name != null~}
+      secretRef:
+        name: ${var.oci_pull_secret_name}
+%{endif~}
       filter:
         includeTag: "^\\d+\\.\\d+\\.\\d+$"
         # Preserve semantic ordering: lexical order would rank 0.9.9 above 0.9.10.
@@ -75,6 +79,10 @@ resource "kubectl_manifest" "rset" {
         spec:
           interval: 2m
           url: ${var.oci_registry}/${var.releases_artifact}
+%{if var.oci_pull_secret_name != null~}
+          secretRef:
+            name: ${var.oci_pull_secret_name}
+%{endif~}
           ref:
             tag: "<< inputs.tag >>"
       - apiVersion: kustomize.toolkit.fluxcd.io/v1

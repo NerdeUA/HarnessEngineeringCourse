@@ -204,7 +204,7 @@ Expected: PASS; workflow cannot write repository contents or deploy to Kubernete
 
 - [x] **Step 1: Add failing assertions for bootstrap source ownership and pinning**
 
-Check that Terraform/OpenTofu defaults identify the course artifact, accept an explicit immutable version, preserve two-phase CRD/application Kustomization dependencies, and do not contain tokens. Also assert the existing course README text remains present.
+Check that Terraform/OpenTofu defaults identify the course artifact, accept an explicit immutable version, optionally attach an existing `flux-system` dockerconfigjson Secret to both the OCIArtifactTag provider and generated OCIRepository, preserve two-phase CRD/application Kustomization dependencies, and do not contain token values. Also assert the existing course README text remains present.
 
 - [x] **Step 2: Run the check before implementation**
 
@@ -214,7 +214,7 @@ Expected: FAIL until defaults and docs are updated.
 
 - [x] **Step 3: Update OpenTofu variables and Flux ResourceSet inputs**
 
-Set a course-owned OCI repository default and parameterize its version; retain the existing two-phase structure and dependencies. Do not change the live cluster yet.
+Set a course-owned OCI repository default and parameterize its version; add optional `oci_pull_secret_name` (default `null`) and template its `secretRef` into both private-package auth points; retain the existing two-phase structure and dependencies. Do not change the live cluster yet.
 
 - [x] **Step 4: Document release, access, migration gates, and rollback**
 

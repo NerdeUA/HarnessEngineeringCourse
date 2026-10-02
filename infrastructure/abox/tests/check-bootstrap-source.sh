@@ -11,7 +11,14 @@ require() {
 require infrastructure/abox/bootstrap/variables.tf 'default     = "oci://ghcr.io/nerdeua/harnessengineeringcourse/abox"'
 require infrastructure/abox/bootstrap/variables.tf 'default = "releases-llmd-embeddings"'
 require infrastructure/abox/bootstrap/variables.tf 'default     = "0.1.0"'
+require infrastructure/abox/bootstrap/variables.tf 'variable "oci_pull_secret_name"'
+require infrastructure/abox/bootstrap/variables.tf 'default     = null'
 require infrastructure/abox/bootstrap/flux.tf 'url: ${var.oci_registry}/${var.releases_artifact}'
+require infrastructure/abox/bootstrap/flux.tf 'var.oci_pull_secret_name != null'
+require infrastructure/abox/bootstrap/flux.tf 'secretRef:'
+require infrastructure/abox/bootstrap/flux.tf 'name: ${var.oci_pull_secret_name}'
+secret_refs=$(grep -Fc -- 'name: ${var.oci_pull_secret_name}' "$source_dir/bootstrap/flux.tf")
+[[ "$secret_refs" == 2 ]] || { echo "FAIL: expected secretRef on both RSIP and OCIRepository, found $secret_refs" >&2; exit 1; }
 require infrastructure/abox/bootstrap/flux.tf 'path: ./crds'
 require infrastructure/abox/bootstrap/flux.tf 'dependsOn:'
 require infrastructure/abox/bootstrap/flux.tf 'path: ./'

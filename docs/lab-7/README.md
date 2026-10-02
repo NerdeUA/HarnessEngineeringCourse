@@ -17,7 +17,7 @@ This lab compares standard OpenTelemetry collection with Jaeger, MLflow Tracing,
 
 ## Deploy the three backends and collector
 
-For a GitOps-managed ABox cluster, keep Flux as the source of truth and publish the reviewed course-owned OCI artifact before changing its source. Do not use `kubectl apply` to override resources already managed by Flux. The exact course package is `oci://ghcr.io/nerdeua/harnessengineeringcourse/abox/releases-llmd-embeddings:<semver>`; the publisher workflow accepts only `abox-vX.Y.Z` tags. The package must be readable from the cluster. Prefer public read access; if GHCR is private, create a read-only pull credential in `flux-system` out of band and reference it from the Flux OCI source. Never commit that credential.
+For a GitOps-managed ABox cluster, keep Flux as the source of truth and publish the reviewed course-owned OCI artifact before changing its source. Do not use `kubectl apply` to override resources already managed by Flux. The exact course package is `oci://ghcr.io/nerdeua/harnessengineeringcourse/abox/releases-llmd-embeddings:<semver>`; the publisher workflow accepts only `abox-vX.Y.Z` tags. The package must be readable from the cluster. Prefer public read access; if GHCR is private, provision a read-only `kubernetes.io/dockerconfigjson` Secret in `flux-system` out of band and pass its name as `oci_pull_secret_name` to OpenTofu. The bootstrap attaches that reference to both the tag provider and generated OCIRepository. Never commit the Secret or its token.
 
 For an isolated/manual lab cluster that is not managed by the ABox Flux release, the checked-in docs manifests can still be applied directly:
 
@@ -72,7 +72,7 @@ kubectl -n flux-system get resourcesetinputprovider releases-image -o yaml \
   > /tmp/abox-releases-image-before-course-migration.yaml
 ```
 
-After the course package is readable, change the `releases-image` provider URL to `oci://ghcr.io/nerdeua/harnessengineeringcourse/abox/releases-llmd-embeddings` and let its ResourceSet reconcile. Verify the generated OCIRepository and both Kustomizations are Ready, the CRD Kustomization precedes the app Kustomization, and tracing remains enabled after at least one two-minute reconcile interval.
+After the course package is readable, change the `releases-image` provider URL to `oci://ghcr.io/nerdeua/harnessengineeringcourse/abox/releases-llmd-embeddings` and let its ResourceSet reconcile. For a private package, also set the provider's `secretRef.name` to the existing `flux-system` Secret; the ResourceSet must include the same `secretRef` on its generated OCIRepository. Verify the generated OCIRepository and both Kustomizations are Ready, the CRD Kustomization precedes the app Kustomization, and tracing remains enabled after at least one two-minute reconcile interval.
 
 If readiness fails, restore the captured `releases-image` provider with `kubectl apply -f /tmp/abox-releases-image-before-course-migration.yaml`, then verify the OCIRepository and both Kustomizations return to Ready on the upstream tag. Do not delete the upstream package or leave Flux suspended. The live cluster is not retargeted by this documentation/source change alone.
 

@@ -32,6 +32,7 @@ jobs:
         with:
           ref: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref }}
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Validate immutable version tag
         shell: bash

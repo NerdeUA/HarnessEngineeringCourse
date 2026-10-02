@@ -201,6 +201,6 @@ oci://ghcr.io/nerdeua/harnessengineeringcourse/abox/releases-llmd-embeddings:<se
 
 The OCI tag is the numeric version from a course Git tag named `abox-vX.Y.Z`. The workflow rejects malformed tags and refuses to overwrite an existing version. It publishes no `latest` alias. Validate the source and package read access before creating/pushing a release tag.
 
-Flux consumers need permission to read the GHCR package. Prefer making this package public if course policy allows. For a private package, provide a read-only GHCR pull secret in `flux-system` out of band; never add the credential to this repository. See `docs/lab-7/README.md` for the course migration and rollback procedure.
+Flux consumers need permission to read the GHCR package. Prefer making this package public if course policy allows. For a private package, provision a read-only `kubernetes.io/dockerconfigjson` Secret in `flux-system` out of band and set OpenTofu variable `oci_pull_secret_name` to its name. The bootstrap attaches this reference to both the ResourceSetInputProvider and the generated OCIRepository. Never add the credential value to this repository. See `docs/lab-7/README.md` for the course migration and rollback procedure.
 
 `releases/lab7/` contains the tested Jaeger, MLflow, and OTel Collector manifests from `docs/lab-7/manifests/`, promoted into the Flux release bundle. When changing those manifests, keep the Lab 7 instructions and configuration check aligned.
