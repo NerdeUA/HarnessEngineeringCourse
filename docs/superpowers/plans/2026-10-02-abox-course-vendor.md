@@ -4,7 +4,7 @@
 
 **Goal:** Vendor the deployed ABox Lab 4 source and required Lab 7 observability changes into `HarnessEngineeringCourse`, publish it as a course-owned Flux OCI artifact, and verify durable tracing end to end.
 
-**Architecture:** Assemble `infrastructure/abox/` from the `feat/llmd-embeddings` compatibility baseline, manually selected observability deltas from `feat/otel-demo`, and the compatible semver correction from `main`. A course-root GitHub Actions workflow publishes only the vendored release bundle to GHCR on an explicit version tag; OpenTofu and the live Flux ResourceSet then use that immutable course artifact.
+**Architecture:** Assemble `infrastructure/abox/` from the `feat/llmd-embeddings` compatibility baseline, port the `feat/otel-demo` semver comparator, retain the branch-specific artifact stream correction already present from `main`, and put the tested Lab 7 Jaeger/MLflow/Collector resources under Flux management. A course-root GitHub Actions workflow publishes only the vendored release bundle to GHCR on an explicit version tag; OpenTofu and the live Flux ResourceSet then use that immutable course artifact.
 
 **Tech Stack:** Git/GitHub Actions, Flux OCI artifacts, GHCR, Kubernetes, OpenTofu, Kustomize, Helm, Jaeger, Phoenix, MLflow, OTel Collector.
 
@@ -15,7 +15,7 @@
 - Never stage or commit in the separate `abox` checkout; all commits belong to `HarnessEngineeringCourse`.
 - Do not copy `.git`, `.terraform`, `bootstrap/abox-config`, Kubernetes Secret data, API keys, or private SSH keys.
 - Do not overwrite the existing nested ABox checkout or existing Lab 4/Lab 7 documents.
-- Use `feat/llmd-embeddings` as baseline; selectively integrate required `feat/otel-demo` observability files and compatible `main` semver fix; do not overlay whole branches.
+- Use `feat/llmd-embeddings` as baseline; port only the `feat/otel-demo` `semver: ">=0.0.0"` comparator; this baseline already has the branch-specific OCI artifact stream correction from `main`; do not overlay whole branches.
 - Keep Flux active; retain the upstream artifact until the course artifact is published, readable, and reconciled successfully.
 - Pin release tags; do not use a floating OCI artifact tag.
 - Set `otel.captureSensitiveContent=false` and do not infer semantic/tool spans without observing them.
@@ -60,7 +60,7 @@ For every changed release/bootstrap/workflow path, inspect both versions with `g
 
 Expected: no whole-branch overlay; `triage`, `xray-memory`, Astronomy Shop, and duplicate backends are excluded absent a demonstrated Lab 7 dependency.
 
-- [ ] **Step 3: Verify branch ancestry and locate the semver correction**
+- [ ] **Step 3: Verify branch ancestry and locate both Flux corrections**
 
 Run:
 
@@ -69,11 +69,11 @@ git -C abox log --oneline --decorate --all -- releases/bootstrap
 git -C abox log -p origin/feat/llmd-embeddings..origin/main -- '*flux*' '*release*' 'bootstrap/*'
 ```
 
-Expected: identify the smallest compatible semver patch and its exact destination; do not import unrelated `main` edits.
+Expected: confirm `feat/llmd-embeddings` already contains the branch-aware artifact repository selection from `main`, and locate the minimal `semver: ">=0.0.0"` comparator on `feat/otel-demo`; do not import its branch default or unrelated `main` edits.
 
 - [ ] **Step 4: Record the allowlist and conflict decisions**
 
-Write the source-branch mapping and excluded paths into the inventory document or this plan before copying. Include shared paths `releases/kustomization.yaml`, `releases/phoenix.yaml`, `bootstrap/flux.tf`, `bootstrap/variables.tf`, and release workflows.
+Write the source-branch mapping and excluded paths into the inventory document or this plan before copying. Include shared paths `releases/kustomization.yaml`, `releases/phoenix.yaml`, `bootstrap/flux.tf`, `bootstrap/variables.tf`, and release workflows. Explicitly include the tested `docs/lab-7/manifests/{namespace,jaeger,mlflow,otel-collector,kustomization}.yaml` as vendor inputs; exclude duplicate `feat/otel-demo` MLflow/Collector resources.
 
 Expected: every copied source file has a known provenance and no unreviewed conflict remains.
 
@@ -111,9 +111,9 @@ Expected: no unrelated demo/xray/triage resources and no duplicate Kustomize ide
 
 - [ ] **Step 4: Apply the compatible semver fix and Lab 7 kagent settings**
 
-Port the minimal `origin/main` semver correction into its reviewed destination. Set both relevant kagent components to OTLP/gRPC endpoint for the existing `lab7` Collector and set sensitive-content capture false in `infrastructure/abox/releases/kagent.yaml`.
+Port only `semver: ">=0.0.0"` from `origin/feat/otel-demo` into `infrastructure/abox/bootstrap/flux.tf`. Preserve the branch-aware repository selection from the feature baseline. Set both relevant kagent components to OTLP/gRPC endpoint for the existing `lab7` Collector and set sensitive-content capture false in `infrastructure/abox/releases/kagent.yaml`.
 
-Expected: semver range selects the intended newest compatible course release; rendered kagent values enable tracing without sensitive content.
+Expected: semver ordering selects the intended newest compatible course release without mixing branch artifact streams; rendered kagent values enable tracing without sensitive content.
 
 - [ ] **Step 5: Verify the vendor tree's provenance and hygiene**
 
