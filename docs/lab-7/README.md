@@ -1,6 +1,6 @@
 # Lab 7 — GenAI observability
 
-This lab compares standard OpenTelemetry collection with Jaeger, MLflow Tracing, and Arize Phoenix. The checked-in manifests are a reproducible lab setup; all ABox changes remain uncommitted in the nested `abox/` repository.
+This lab compares standard OpenTelemetry collection with Jaeger, MLflow Tracing, and Arize Phoenix. The course-owned ABox source is in `infrastructure/abox/`; the nested `abox/` checkout is only an upstream reference. `infrastructure/abox/releases/lab7/` is the Flux-managed copy of the tested Lab 7 backend manifests, while `docs/lab-7/manifests/` remains a standalone lab setup and test fixture.
 
 ## Prerequisites
 
@@ -17,13 +17,17 @@ This lab compares standard OpenTelemetry collection with Jaeger, MLflow Tracing,
 
 ## Deploy the three backends and collector
 
+For a GitOps-managed ABox cluster, keep Flux as the source of truth and publish the reviewed course-owned OCI artifact before changing its source. Do not use `kubectl apply` to override resources already managed by Flux. The exact course package is `oci://ghcr.io/nerdeua/harnessengineeringcourse/abox/releases-llmd-embeddings:<semver>`; the publisher workflow accepts only `abox-vX.Y.Z` tags. The package must be readable from the cluster. Prefer public read access; if GHCR is private, create a read-only pull credential in `flux-system` out of band and reference it from the Flux OCI source. Never commit that credential.
+
+For an isolated/manual lab cluster that is not managed by the ABox Flux release, the checked-in docs manifests can still be applied directly:
+
 ```sh
 kubectl apply -k docs/lab-7/manifests
 kubectl -n lab7 wait --for=condition=Available deployment/jaeger deployment/mlflow deployment/otel-collector --timeout=5m
 kubectl -n lab7 get pods
 ```
 
-Merge `manifests/kagent-tracing-values.yaml` under `spec.values` of the ABox `releases/kagent.yaml` Flux HelmRelease, then reconcile through the normal GitOps source. It enables OTLP/gRPC tracing to the collector and explicitly keeps sensitive content capture disabled. Do not rely on a live-only patch for a persistent installation. In this session, the ABox source edit was deliberately left uncommitted; Flux reconciliation was resumed after the live validation.
+The vendored `infrastructure/abox/releases/kagent.yaml` carries the same OTLP/gRPC tracing values and sets `otel.captureSensitiveContent=false`. For GitOps installs, change that source and publish a new course artifact; do not rely on a live-only patch for persistence. Preserve the existing two-phase CRD/application reconciliation when editing the bundle.
 
 The Collector receives OTLP/gRPC on 4317 and fans traces out to Jaeger (OTLP/gRPC), Phoenix (OTLP/HTTP with its system key), and MLflow (OTLP/HTTP with experiment ID `0`). Keep the Phoenix key in a Kubernetes Secret. MLflow is configured as a single-worker demo service backed by a 1 GiB PVC; Jaeger is an all-in-one, in-memory demo backend.
 
@@ -58,6 +62,19 @@ curl -fsS http://localhost:16686/api/v3/traces/<TRACE_ID> | \
 For MLflow, select experiment `Default` (ID `0`) and open Traces. For Phoenix, open the default project and its Traces view. The same trace ID should appear in all three backends when all exporters accept it.
 
 The evidence in `evidence/` records the run. In this run, the controller returned HTTP 200 and all three backends ingested the same trace, but the CLI could not decode the JSON-RPC error payload (`error.data` had an unexpected object shape). Therefore the report does not claim a successful agent answer or semantic LLM/tool spans.
+
+## Course release migration and rollback
+
+Before switching a running cluster, confirm the course artifact tag exists, its digest is known, and Flux can pull it. The upstream source remains available at `oci://ghcr.io/den-vasyliev/abox/releases-llmd-embeddings`; the current upstream tag recorded during the migration design was `0.9.5`. Record the live input before changing it:
+
+```sh
+kubectl -n flux-system get resourcesetinputprovider releases-image -o yaml \
+  > /tmp/abox-releases-image-before-course-migration.yaml
+```
+
+After the course package is readable, change the `releases-image` provider URL to `oci://ghcr.io/nerdeua/harnessengineeringcourse/abox/releases-llmd-embeddings` and let its ResourceSet reconcile. Verify the generated OCIRepository and both Kustomizations are Ready, the CRD Kustomization precedes the app Kustomization, and tracing remains enabled after at least one two-minute reconcile interval.
+
+If readiness fails, restore the captured `releases-image` provider with `kubectl apply -f /tmp/abox-releases-image-before-course-migration.yaml`, then verify the OCIRepository and both Kustomizations return to Ready on the upstream tag. Do not delete the upstream package or leave Flux suspended. The live cluster is not retargeted by this documentation/source change alone.
 
 ## Configuration validation
 
