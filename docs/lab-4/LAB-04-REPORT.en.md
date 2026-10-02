@@ -1,7 +1,7 @@
 # Lab 4 — Deployment and retrieval evaluation report
 
 **Run date:** 2026-10-02; **cluster:** local kind `abox`, Kubernetes v1.35.0, three Ready nodes; **release artifact:** Flux `OCIRepository/releases`, `oci://ghcr.io/den-vasyliev/abox/releases-llmd-embeddings`, revision `0.9.5`.
-**Result:** deployment, MCP wiring, dual indexing, and vector-level comparison complete; end-to-end agent generation is blocked by the invalid configured OpenAI key.
+**Result:** deployment, MCP wiring, dual indexing, vector-level comparison, and end-to-end A2A testing complete. The corrected shared OpenAI credential works. The official retrieval agent answered all four benchmark questions correctly; the baseline answered two correctly and exposed an empty-graph limitation for graph-routed questions.
 
 ## Completion by requirement
 
@@ -14,7 +14,7 @@
 | Set system prompt | Done. Official agent is limited to the indexed corpus and `abox-minilm`, retains source metadata, and must not mix baseline collection results. |
 | Index with MiniLM | Done. Eight records in `abox-minilm`; Qdrant reports 384 dimensions. |
 | Index the same corpus with default Qdrant MCP | Done. The same eight record texts and metadata were stored using `vector_store` in `abox-nomic`; Qdrant reports 768 dimensions. |
-| Compare and record results in ADR | Vector-retrieval comparison done and recorded in the paired ADRs. Full agent-level generation comparison is pending valid OpenAI credentials (see below). |
+| Compare and record results in ADR | Both vector ranking and live A2A agent behavior were compared and recorded in the paired ADRs. |
 
 ## Corpus and method
 
@@ -37,11 +37,25 @@ Four fixed questions were sent to each MCP's retrieval tool. Rank is the positio
 
 The Qdrant collections each contain eight points. `indexed_vectors_count` is zero because the small corpus is below the default HNSW indexing threshold; Qdrant still serves the tested searches by full scan. The live collection configs show a named 384-dimensional MiniLM vector and a 768-dimensional baseline vector.
 
-## Agent-level test and blocker
+## Agent-level evaluation
 
-The baseline agent was invoked through the kagent A2A endpoint. The endpoint returned HTTP 200, but the task failed before producing an answer: the configured OpenAI provider returned `401 Unauthorized` with error code `invalid_api_key`. The error message was sanitized by the provider; no Kubernetes Secret contents were read. Since the official and baseline agents share `default-model-config`, running more agent calls cannot produce a valid comparison until the existing `kagent/kagent-openai` Secret contains a working key.
+After the shared OpenAI credential was corrected, the A2A endpoint completed all eight retrieval-agent tasks (HTTP 200, task state `completed`); no Secret value was read. The same four questions were sent to each agent. Each question had a known target fact in the indexed corpus. An answer counts as correct only if it states the target fact and cites the appropriate record/source.
 
-Therefore this report distinguishes two outcomes: the MCP servers and retrieval tools were exercised successfully on identical indexed data; LLM-driven agent selection, grounded answer correctness, and latency/cost comparison remain unverified. Once credentials are corrected, rerun the same four prompts against both agents and append the answer/tool traces to this report.
+| Query | Baseline answer | Baseline tool | Official answer | Official tool |
+|---|---|---|---|---|
+| Q1: Qdrant REST Service and port | Correct: `Service/qdrant`, port `6333` | `vector_find` | Correct: `Service/qdrant`, port `6333` | `qdrant-find` |
+| Q2: official MCP embedding model and collection | Incorrect abstention: queried empty graph; did not retrieve indexed MCPServer record | `get-schema` | Correct: `sentence-transformers/all-MiniLM-L6-v2`, `abox-minilm` | `qdrant-find` |
+| Q3: agent with Pod-log and connectivity tools | Incorrect abstention: queried empty graph; did not retrieve indexed Agent record | `get-schema` | Correct: `k8s-agent`, with both tools named | `qdrant-find` |
+| Q4: compare agents' tools and collections | Correct: baseline `vector_store`/`vector_find`, `abox-nomic`; official `qdrant-store`/`qdrant-find`, `abox-minilm` | `vector_find` | Correct, with both records cited | `qdrant-find` |
+
+| Agent-level metric | Official MiniLM | ABox baseline |
+|---|---:|---:|
+| Correct grounded answers | 4/4 (100%) | 2/4 (50%) |
+| Expected retrieval tool selected | 4/4 | 2/4 |
+
+The baseline system prompt routes relationship/graph-shaped questions to Neo4j (`get-schema`/`read-cypher`), but the graph has no ingested nodes; its corpus exists only in the baseline Qdrant collection. The agent correctly abstained rather than fabricating answers, but this means its agentic retrieval path cannot use the indexed vector records for those questions. The official agent is vector-only and selected `qdrant-find` for all four questions, returning grounded answers. This is a corpus/tool-routing limitation, not evidence that MiniLM embeddings are generally superior: at the direct vector-search level, baseline ranked the target higher (MRR 1.00 vs. 0.75). The two evaluations measure different layers and should not be conflated.
+
+The separately tested `k8s-agent` also completed an A2A request, called `k8s_get_resources`, and correctly reported the Qdrant Service type (`ClusterIP`) and HTTP port (`6333`).
 
 ## Operational note: rebuilt official image
 
