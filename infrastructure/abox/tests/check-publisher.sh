@@ -15,12 +15,19 @@ require "workflow_dispatch:"
 require "persist-credentials: false"
 require "fluxcd/flux2/action@v2.9.6"
 require "version: '2.9.6'"
-require "./infrastructure/abox/releases"
 require "ghcr.io/nerdeua/harnessengineeringcourse/abox/releases-llmd-embeddings"
 require "^abox-v(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"
 require "flux pull artifact"
 require "flux push artifact"
 require "GITHUB_TOKEN"
+require 'release_dir="${RUNNER_TEMP}/abox-release"'
+require 'cp -a infrastructure/abox/releases/. "$release_dir/"'
+require 'cp infrastructure/abox/LICENSE "$release_dir/LICENSE"'
+require '--path="${RUNNER_TEMP}/abox-release"'
+grep -Fq -- 'Apache License' "$root/infrastructure/abox/LICENSE" || {
+  echo 'FAIL: vendored ABox license is missing Apache-2.0 text' >&2
+  exit 1
+}
 if grep -Eq '^make push([[:space:]]|$)' "$root/infrastructure/abox/README.md"; then
   echo 'FAIL: vendored ABox README must not execute the upstream ABox release target' >&2
   exit 1

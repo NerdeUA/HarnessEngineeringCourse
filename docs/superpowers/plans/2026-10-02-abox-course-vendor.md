@@ -166,7 +166,7 @@ Expected: render succeeds and every resource identity occurs once.
 - Create: `infrastructure/abox/tests/check-publisher.sh`.
 
 **Interfaces:**
-- Consumes: `infrastructure/abox/releases/` and explicit tags matching `abox-vX.Y.Z`.
+- Consumes: `infrastructure/abox/releases/`, `infrastructure/abox/LICENSE`, and explicit tags matching `abox-vX.Y.Z`.
 - Produces: GHCR artifact `ghcr.io/nerdeua/harnessengineeringcourse/abox/releases-llmd-embeddings:<version>` (confirm GitHub's canonical package naming before adopting exact path) built from the vendored release directory with `packages: write` permission.
 
 - [x] **Step 1: Write publisher contract assertions**
@@ -181,7 +181,7 @@ Expected: FAIL because workflow/docs are not yet present.
 
 - [x] **Step 3: Implement workflow, source README, and release tag guard**
 
-Use the existing upstream `flux push artifact` pattern but set repository root, OCI URL, source path, and semantic version explicitly. Prevent malformed or floating tags. Do not push a tag in this step.
+Use the existing upstream `flux push artifact` pattern but set repository root, OCI URL, source path, and semantic version explicitly. Stage the release directory with the full upstream Apache-2.0 LICENSE and prominent notices on modified upstream manifests. Prevent malformed or floating tags. Do not push a tag in this step.
 
 - [x] **Step 4: Rerun checks and inspect workflow permissions**
 

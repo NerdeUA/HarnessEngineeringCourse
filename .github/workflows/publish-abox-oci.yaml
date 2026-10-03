@@ -72,12 +72,22 @@ jobs:
             exit 1
           fi
 
+      - name: Stage release bundle with upstream license
+        shell: bash
+        run: |
+          set -euo pipefail
+          release_dir="${RUNNER_TEMP}/abox-release"
+          mkdir -p "$release_dir"
+          cp -a infrastructure/abox/releases/. "$release_dir/"
+          cp infrastructure/abox/LICENSE "$release_dir/LICENSE"
+          grep -q 'Apache License' "$release_dir/LICENSE"
+
       - name: Publish the release bundle
         shell: bash
         run: |
           set -euo pipefail
           digest="$(flux push artifact "oci://${OCI_ARTIFACT}:${ARTIFACT_VERSION}" \
-            --path="./infrastructure/abox/releases" \
+            --path="${RUNNER_TEMP}/abox-release" \
             --source="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}" \
             --revision="${RELEASE_TAG}@sha1:${SOURCE_SHA}" \
             --output=json | jq -er '.digest')"

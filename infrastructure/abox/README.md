@@ -49,7 +49,7 @@ make run  →  scripts/setup.sh
                               kagent (agent runtime + HTTPRoute)
 ```
 
-Everything after the cluster is **gitless GitOps via OCI**: no Git polling, no deploy keys. The course-root GitHub Actions workflow publishes `releases/` only for an explicit `abox-vX.Y.Z` tag. The cluster reconciles that course-owned artifact automatically.
+Everything after the cluster is **gitless GitOps via OCI**: no Git polling, no deploy keys. The course-root GitHub Actions workflow publishes the `releases/` bundle together with this tree's Apache-2.0 `LICENSE`, only for an explicit `abox-vX.Y.Z` tag. The cluster reconciles that course-owned artifact automatically.
 
 ## Releasing
 
@@ -193,7 +193,7 @@ Apache 2.0 — see [LICENSE](./LICENSE).
 
 This directory is the course-owned copy of ABox's `feat/llmd-embeddings` source, including the Lab 4 releases and the Lab 7 tracing setup. Keep the separate `abox/` checkout as an upstream reference only; do not commit changes there.
 
-The course workflow publishes `releases/` to:
+The course workflow publishes `releases/` together with the Apache-2.0 `LICENSE` to:
 
 ```text
 oci://ghcr.io/nerdeua/harnessengineeringcourse/abox/releases-llmd-embeddings:<semver>
@@ -201,6 +201,6 @@ oci://ghcr.io/nerdeua/harnessengineeringcourse/abox/releases-llmd-embeddings:<se
 
 The OCI tag is the numeric version from a course Git tag named `abox-vX.Y.Z`. The workflow rejects malformed tags and refuses to overwrite an existing version. It publishes no `latest` alias. Validate the source and package read access before creating/pushing a release tag.
 
-Flux consumers need permission to read the GHCR package. Prefer making this package public if course policy allows. For a private package, provision a read-only `kubernetes.io/dockerconfigjson` Secret in `flux-system` out of band and set OpenTofu variable `oci_pull_secret_name` to its name. The bootstrap attaches this reference to both the ResourceSetInputProvider and the generated OCIRepository. Never add the credential value to this repository. See `docs/lab-7/README.md` for the course migration and rollback procedure.
+The GHCR package is separate from the Git repository; its visibility controls who can pull the OCI artifact, not who can push course commits. A newly published package defaults to private. Private access requires an out-of-band read-only GHCR credential in a `kubernetes.io/dockerconfigjson` Secret in `flux-system`, with OpenTofu variable `oci_pull_secret_name` set to its name. Public access allows anonymous pulls, but exposes the release manifests (service names, image versions, and deployment topology); GitHub does not allow a public GHCR package to be made private again. Keep it private unless that disclosure is intentional. Package write access remains controlled separately by GitHub permissions and the publisher workflow. Never put a token in Git. See `docs/lab-7/README.md` for migration and rollback.
 
 `releases/lab7/` contains the tested Jaeger, MLflow, and OTel Collector manifests from `docs/lab-7/manifests/`, promoted into the Flux release bundle. When changing those manifests, keep the Lab 7 instructions and configuration check aligned.

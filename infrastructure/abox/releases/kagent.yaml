@@ -1,3 +1,4 @@
+# HarnessEngineeringCourse modification: enables Lab 7 OTLP tracing with sensitive content disabled.
 apiVersion: v1
 kind: Namespace
 metadata:

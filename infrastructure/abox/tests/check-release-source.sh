@@ -30,6 +30,7 @@ done
 for resource in agent-retrieval.yaml kagent.yaml llama-cpp-embeddings.yaml mcp-servers.yaml qdrant.yaml phoenix.yaml lab7; do
   require_text releases/kustomization.yaml "- $resource"
 done
+require_text releases/kustomization.yaml '# HarnessEngineeringCourse modification: adds Lab 7 observability resources.'
 require_text releases/mcp-servers.yaml 'name: qdrant-mcp'
 require_text releases/agent-retrieval.yaml 'name: qdrant-mcp'
 
@@ -55,6 +56,7 @@ require_text releases/kagent.yaml 'captureSensitiveContent: false'
 require_text releases/kagent.yaml 'enabled: true'
 require_text releases/kagent.yaml 'endpoint: http://otel-collector.lab7.svc.cluster.local:4317'
 require_text releases/kagent.yaml 'protocol: grpc'
+require_text releases/kagent.yaml '# HarnessEngineeringCourse modification: enables Lab 7 OTLP tracing with sensitive content disabled.'
 
 command -v kubectl >/dev/null || fail 'kubectl is required to render releases'
 command -v ruby >/dev/null || fail 'ruby is required to check rendered identity uniqueness'
