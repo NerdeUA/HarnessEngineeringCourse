@@ -15,11 +15,12 @@ spec:
     env:
       NEO4J_MCP_URI: bolt://neo4j.neo4j:7687
       NEO4J_MCP_USERNAME: neo4j
-      # Matches releases/neo4j.yaml.
-      NEO4J_MCP_PASSWORD: abox-neo4j
       NEO4J_MCP_DATABASE: neo4j
       NEO4J_MCP_READ_ONLY: "false"
       NEO4J_MCP_TELEMETRY: "false"
+    # kmcp 0.3.0 imports Secret keys as container environment variables.
+    secretRefs:
+      - name: neo4j-auth
     resources:
       requests:
         cpu: 50m

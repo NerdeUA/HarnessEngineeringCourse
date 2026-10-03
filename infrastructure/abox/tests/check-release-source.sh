@@ -33,6 +33,14 @@ done
 require_text releases/kustomization.yaml '# HarnessEngineeringCourse modification: adds Lab 7 observability resources.'
 require_text releases/mcp-servers.yaml 'name: qdrant-mcp'
 require_text releases/agent-retrieval.yaml 'name: qdrant-mcp'
+require_text releases/neo4j.yaml 'passwordFromSecret: neo4j-auth'
+require_text releases/mcp-servers.yaml 'NEO4J_MCP_URI: bolt://neo4j.neo4j:7687'
+require_text releases/mcp-servers.yaml 'secretRefs:'
+require_text releases/mcp-servers.yaml '- name: neo4j-auth'
+if rg -n '^[[:space:]]*password:' "$root/releases/neo4j.yaml" || \
+  rg -n 'NEO4J_MCP_PASSWORD:' "$root/releases/mcp-servers.yaml"; then
+  fail 'Neo4j credentials must come from out-of-band Kubernetes Secrets'
+fi
 
 # The Lab 7 tested manifests are the single Flux-managed deployment bundle.
 require_text releases/lab7/kustomization.yaml '  - mlflow.yaml'

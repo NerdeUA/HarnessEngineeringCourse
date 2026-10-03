@@ -41,11 +41,9 @@ spec:
     neo4j:
       name: neo4j
       edition: community
-      # Left empty the chart generates a random password on install and stores
-      # it in a Secret, which makes the release non-reproducible -- a re-install
-      # invalidates every client. This is a local sandbox with no secret
-      # management, the same reason kagent ships a plaintext Postgres DSN.
-      password: "abox-neo4j"
+      # The Secret is provisioned out of band; its NEO4J_AUTH key is
+      # "neo4j/<password>". Never commit database credentials to this bundle.
+      passwordFromSecret: neo4j-auth
       resources:
         cpu: "500m"
         memory: "2Gi"

@@ -29,6 +29,8 @@ kubectl -n lab7 get pods
 
 The vendored `infrastructure/abox/releases/kagent.yaml` carries the same OTLP/gRPC tracing values and sets `otel.captureSensitiveContent=false`. For GitOps installs, change that source and publish a new course artifact; do not rely on a live-only patch for persistence. Preserve the existing two-phase CRD/application reconciliation when editing the bundle.
 
+Neo4j credentials are never stored in the public course bundle. Provision the namespace-local Secrets before first reconcile, following the [English](neo4j-credentials.en.md) or [Ukrainian](neo4j-credentials.uk.md) instructions. For an existing database, rotate the password inside Neo4j before updating the Secrets; changing only the chart Secret does not rotate an initialized database.
+
 The Collector receives OTLP/gRPC on 4317 and fans traces out to Jaeger (OTLP/gRPC), Phoenix (OTLP/HTTP with its system key), and MLflow (OTLP/HTTP with experiment ID `0`). Keep the Phoenix key in a Kubernetes Secret. MLflow is configured as a single-worker demo service backed by a 1 GiB PVC; Jaeger is an all-in-one, in-memory demo backend.
 
 ## Open the UIs
