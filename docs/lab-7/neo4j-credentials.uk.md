@@ -1,6 +1,6 @@
 # Облікові дані Neo4j для навчального ABox bundle
 
-Маніфести релізу містять лише посилання на Secret. До того як Flux встановить HelmRelease Neo4j і `neo4j-mcp`, створіть однаковий новий пароль у двох Secrets у відповідних namespace: `neo4j/neo4j-auth` (ключ `NEO4J_AUTH` має містити `neo4j/<пароль>`) і `kagent/neo4j-auth` (ключ `NEO4J_MCP_PASSWORD` містить лише пароль). Kubernetes Secrets обмежені namespace, тому потрібні обидва. Chart Neo4j читає `neo4j.passwordFromSecret`; kmcp імпортує ключі з `secretRefs` як змінні середовища.
+Маніфести релізу містять лише посилання на Secret. До того як Flux встановить HelmRelease Neo4j і `neo4j-mcp`, створіть однаковий новий пароль у двох Secrets у відповідних namespace: `neo4j/neo4j-password` (ключ `NEO4J_AUTH` має містити `neo4j/<пароль>`) і `kagent/neo4j-auth` (ключ `NEO4J_MCP_PASSWORD` містить лише пароль). Kubernetes Secrets обмежені namespace, тому потрібні обидва. Chart Neo4j читає `neo4j.passwordFromSecret`; kmcp імпортує ключі з `secretRefs` як змінні середовища. Назва Secret для Neo4j має відрізнятися від старого Secret `neo4j-auth`, який створював сам chart: під час переходу Helm видаляє ресурси, якими володів у попередній версії release, і повторне використання цієї назви може видалити новий Secret із паролем.
 
 Виконайте це у довіреній Bash-сесії з `kubectl`, налаштованим на цільовий кластер. Команда створює випадковий 256-бітний пароль у пам’яті й передає API лише base64-кодовані дані Secret; пароль не друкується та не записується у файл. Спершу вимкніть трасування команд (`set +x`).
 
@@ -17,7 +17,7 @@ kubectl apply -f - <<EOF
 apiVersion: v1
 kind: Secret
 metadata:
-  name: neo4j-auth
+  name: neo4j-password
   namespace: neo4j
 type: Opaque
 data:
@@ -43,7 +43,7 @@ unset NEO4J_PASSWORD NEO4J_AUTH_B64 NEO4J_PASSWORD_B64
 Перевірка без розкриття значень Secret:
 
 ```bash
-kubectl -n neo4j get secret neo4j-auth -o go-template='{{ index .data "NEO4J_AUTH" }}' | base64 -d | cut -d/ -f1
+kubectl -n neo4j get secret neo4j-password -o go-template='{{ index .data "NEO4J_AUTH" }}' | base64 -d | cut -d/ -f1
 kubectl -n kagent get secret neo4j-auth -o go-template='{{ index .data "NEO4J_MCP_PASSWORD" }}' | wc -c
 ```
 

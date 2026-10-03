@@ -10,7 +10,7 @@ require() {
 
 require infrastructure/abox/bootstrap/variables.tf 'default     = "oci://ghcr.io/nerdeua/harnessengineeringcourse/abox"'
 require infrastructure/abox/bootstrap/variables.tf 'default = "releases-llmd-embeddings"'
-require infrastructure/abox/bootstrap/variables.tf 'default     = "0.1.0"'
+require infrastructure/abox/bootstrap/variables.tf 'default     = "0.1.2"'
 require infrastructure/abox/bootstrap/variables.tf 'variable "oci_pull_secret_name"'
 require infrastructure/abox/bootstrap/variables.tf 'default     = null'
 require infrastructure/abox/bootstrap/flux.tf 'url: ${var.oci_registry}/${var.releases_artifact}'

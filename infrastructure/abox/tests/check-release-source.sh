@@ -33,7 +33,7 @@ done
 require_text releases/kustomization.yaml '# HarnessEngineeringCourse modification: adds Lab 7 observability resources.'
 require_text releases/mcp-servers.yaml 'name: qdrant-mcp'
 require_text releases/agent-retrieval.yaml 'name: qdrant-mcp'
-require_text releases/neo4j.yaml 'passwordFromSecret: neo4j-auth'
+require_text releases/neo4j.yaml 'passwordFromSecret: neo4j-password'
 require_text releases/mcp-servers.yaml 'NEO4J_MCP_URI: bolt://neo4j.neo4j:7687'
 require_text releases/mcp-servers.yaml 'secretRefs:'
 require_text releases/mcp-servers.yaml '- name: neo4j-auth'
@@ -57,7 +57,7 @@ done
 require_text bootstrap/flux.tf 'includeTag: "^\\d+\\.\\d+\\.\\d+$"'
 require_text bootstrap/flux.tf 'semver: ">=0.0.0"'
 require_text bootstrap/variables.tf 'default = "releases-llmd-embeddings"'
-require_text bootstrap/variables.tf 'default     = "0.1.0"'
+require_text bootstrap/variables.tf 'default     = "0.1.2"'
 
 # Trace transport must be enabled without capturing prompt/response content.
 require_text releases/kagent.yaml 'captureSensitiveContent: false'

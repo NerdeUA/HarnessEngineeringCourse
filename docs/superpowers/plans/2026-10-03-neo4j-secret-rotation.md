@@ -6,7 +6,7 @@ Remove the committed Neo4j password from the course-owned ABox bundle, rotate th
 
 ## Steps
 
-1. Change the vendored Neo4j HelmRelease to consume `neo4j-auth` via `neo4j.passwordFromSecret`; change Neo4j MCP to consume the same key through `secretKeyRef`; document out-of-band provisioning, rotation, and rollback in English and Ukrainian.
+1. Change the vendored Neo4j HelmRelease to consume a collision-free `neo4j-password` Secret via `neo4j.passwordFromSecret`; change Neo4j MCP to consume `kagent/neo4j-auth` through kmcp `secretRefs`; document out-of-band provisioning, rotation, and rollback in English and Ukrainian.
 2. Extend release checks to reject literal Neo4j credentials and require both Secret references. Render and run course validation scripts.
 3. Preserve the current auth Secret in-cluster temporarily, create a strong replacement Secret in `neo4j` and `kagent`, rotate the live database password using a short-lived in-cluster Job, and verify the MCP reconnection.
 4. Commit and push only to `HarnessEngineeringCourse`; publish a new immutable OCI version `0.1.1` from a course release tag.

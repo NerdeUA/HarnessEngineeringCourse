@@ -43,7 +43,9 @@ spec:
       edition: community
       # The Secret is provisioned out of band; its NEO4J_AUTH key is
       # "neo4j/<password>". Never commit database credentials to this bundle.
-      passwordFromSecret: neo4j-auth
+      # Use a name distinct from the chart's former generated neo4j-auth Secret;
+      # otherwise Helm deletes the Secret it previously owned on this transition.
+      passwordFromSecret: neo4j-password
       resources:
         cpu: "500m"
         memory: "2Gi"

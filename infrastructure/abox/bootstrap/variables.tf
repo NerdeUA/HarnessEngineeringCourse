@@ -43,7 +43,7 @@ variable "releases_artifact" {
 variable "releases_version" {
   description = "Default tag for releases OCI artifact bootstrap"
   type        = string
-  default     = "0.1.0"
+  default     = "0.1.2"
 }
 
 variable "flux_operator_version" {
