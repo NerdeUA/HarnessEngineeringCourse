@@ -1,0 +1,12 @@
+{"version":3,"term":{"cols":80,"rows":24},"timestamp":1790963168,"idle_time_limit":1.0,"command":"bash -lc 'printf \"LAB 7 — live trace verification (no secrets or prompt content)\\\\n\"; kubectl get pods -n lab7; printf \"\\\\nJaeger trace 644cf78a6f9aa2973256730a078d7832\\\\n\"; curl -fsS http://127.0.0.1:16686/api/v3/traces/644cf78a6f9aa2973256730a078d7832 | jq -r '.result.resourceSpans[].scopeSpans[].spans[].name' ' ","env":{"SHELL":"/bin/zsh"}}
+[1.209, "o", "LAB 7 — live trace verification (no secrets or prompt content)\r\n"]
+[0.640, "o", "NAME                              READY   STATUS    RESTARTS   AGE\r\njaeger-694d54dbdd-gw9jw           1/1     Running   "]
+[0.000, "o", "0          3h30m\r\nmlflow-7bf49cdb4d-7nv85           1/1     Running   0          14m\r\notel-collector-86549fd78f-p8snv"]
+[0.000, "o", "   1/1"]
+[0.000, "o", "     "]
+[0.000, "o", "Running"]
+[0.000, "o", "   0          11m\r\n"]
+[0.009, "o", "\r\nJaeger trace 644cf78a6f9aa2973256730a078d7832\r\n"]
+[0.464, "o", "POST /api/a2a/kagent/retrieval-agent/\r\ninvoke_agent\r\n"]
+[0.000, "o", "POST /\r\n"]
+[0.003, "x", "0"]

@@ -1,0 +1,11 @@
+# Merge under spec.values in releases/kagent.yaml (ABox Flux source).
+otel:
+  captureSensitiveContent: false
+  tracing:
+    enabled: true
+    exporter:
+      otlp:
+        endpoint: http://otel-collector.lab7.svc.cluster.local:4317
+        protocol: grpc
+        timeout: 15000
+        insecure: true
