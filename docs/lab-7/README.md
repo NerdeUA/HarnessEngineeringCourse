@@ -27,7 +27,7 @@ kubectl -n lab7 wait --for=condition=Available deployment/jaeger deployment/mlfl
 kubectl -n lab7 get pods
 ```
 
-The vendored `infrastructure/abox/releases/kagent.yaml` carries the same OTLP/gRPC tracing values and sets `otel.captureSensitiveContent=false`. For GitOps installs, change that source and publish a new course artifact; do not rely on a live-only patch for persistence. Preserve the existing two-phase CRD/application reconciliation when editing the bundle.
+The vendored `infrastructure/abox/releases/kagent.yaml` carries the OTLP/gRPC tracing values and sets `otel.captureSensitiveContent=false`. The Collector also deletes known provider-specific and generic GenAI payload attributes before exporting to any backend; the flag alone did not remove all raw payload attributes in the tested kagent build. For GitOps installs, change the course-owned source and publish a new course artifact; do not rely on a live-only patch for persistence. Preserve the existing two-phase CRD/application reconciliation when editing the bundle.
 
 The Collector receives OTLP/gRPC on 4317 and fans traces out to Jaeger (OTLP/gRPC), Phoenix (OTLP/HTTP with its system key), and MLflow (OTLP/HTTP with experiment ID `0`). Keep the Phoenix key in a Kubernetes Secret. MLflow is configured as a single-worker demo service backed by a 1 GiB PVC; Jaeger is an all-in-one, in-memory demo backend.
 
@@ -45,11 +45,20 @@ Then open Jaeger at `http://localhost:16686`, MLflow at `http://localhost:5000`,
 
 ## Generate and verify a trace
 
-Invoke an agent through the installed kagent CLI (the following read-only task is illustrative):
+Forward the kagent controller in one terminal:
 
 ```sh
-kagent invoke --kagent-url http://localhost:18083 --agent k8s-agent --namespace kagent \
-  --task 'Use read-only Kubernetes tools to list cluster nodes and report their names and Ready condition only.' --timeout 90s
+kubectl -n kagent port-forward svc/kagent-controller 18083:8083
+```
+
+Then send a read-only A2A JSON-RPC request in another terminal:
+
+```sh
+TASK_ID="$(uuidgen)"
+curl -fsS -H 'Content-Type: application/json' \
+  -d "{\"jsonrpc\":\"2.0\",\"id\":\"$TASK_ID\",\"method\":\"message/send\",\"params\":{\"id\":\"$TASK_ID\",\"message\":{\"kind\":\"message\",\"messageId\":\"$TASK_ID\",\"role\":\"user\",\"parts\":[{\"kind\":\"text\",\"text\":\"List Kubernetes node names and their Ready status only.\"}]}}}" \
+  http://127.0.0.1:18083/api/a2a/kagent/k8s-agent/ | \
+  jq '{taskId:.result.id,contextId:.result.contextId,state:.result.status.state,answer:.result.artifacts[0].parts[0].text}'
 ```
 
 Query Jaeger v2's trace API (not the removed legacy `/api/traces` endpoint):
@@ -59,9 +68,20 @@ curl -fsS http://localhost:16686/api/v3/traces/<TRACE_ID> | \
   jq '[.result.resourceSpans[].scopeSpans[].spans[] | {name, traceId}]'
 ```
 
-For MLflow, select experiment `Default` (ID `0`) and open Traces. For Phoenix, open the default project and its Traces view. The same trace ID should appear in all three backends when all exporters accept it.
+For MLflow, select experiment `Default` (ID `0`) and open Traces. For Phoenix, open the default project and its Traces view. The same trace ID should appear in all three backends when all exporters accept it. The completed course run and correlated ID are recorded in [final verification](evidence/final-verification.md).
 
-The evidence in `evidence/` records the run. In this run, the controller returned HTTP 200 and all three backends ingested the same trace, but the CLI could not decode the JSON-RPC error payload (`error.data` had an unexpected object shape). Therefore the report does not claim a successful agent answer or semantic LLM/tool spans.
+The evidence in `evidence/` records a successful A2A run with model and tool spans. The historical `lab-7.cast` is an earlier baseline recording and is superseded by the final verification record; it is not a recording of the final run.
+
+## Payload privacy and Collector updates
+
+The final Collector transform removes `gcp.vertex.agent.llm_request`, `gcp.vertex.agent.llm_response`, `gcp.vertex.agent.tool_call_args`, and `gcp.vertex.agent.tool_response`, as well as generic GenAI prompt/completion/message/tool-payload fields. This protects newly exported traces, but does not erase older traces already in Jaeger, MLflow, or Phoenix. Treat pre-redaction traces as sensitive and apply each backend's retention/deletion procedure if removal is required.
+
+The Collector ConfigMap is mounted via `subPath`; Kubernetes does not automatically restart the Collector pod for updates to that mounted file. After changing the config, restart the deployment and wait for rollout before relying on the change:
+
+```sh
+kubectl -n lab7 rollout restart deployment/otel-collector
+kubectl -n lab7 rollout status deployment/otel-collector --timeout=180s
+```
 
 ## Course release migration and rollback
 

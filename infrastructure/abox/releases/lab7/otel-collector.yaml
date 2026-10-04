@@ -14,6 +14,15 @@ data:
           grpc:
             endpoint: 0.0.0.0:4317
     processors:
+      transform/redact_sensitive_genai_payload:
+        error_mode: ignore
+        trace_statements:
+          - delete_key(span.attributes, "gcp.vertex.agent.llm_request")
+          - delete_key(span.attributes, "gcp.vertex.agent.llm_response")
+          - delete_key(span.attributes, "gcp.vertex.agent.tool_call_args")
+          - delete_key(span.attributes, "gcp.vertex.agent.tool_response")
+          - delete_matching_keys(span.attributes, "^gen_ai\\.(prompt|completion)(\\..*)?$")
+          - delete_matching_keys(span.attributes, "^gen_ai\\.(input\\.messages|output\\.messages|tool\\.call\\.(arguments|result))$")
       batch: {}
     exporters:
       otlp_grpc/jaeger:
@@ -36,6 +45,7 @@ data:
           receivers:
             - otlp
           processors:
+            - transform/redact_sensitive_genai_payload
             - batch
           exporters:
             - otlp_grpc/jaeger

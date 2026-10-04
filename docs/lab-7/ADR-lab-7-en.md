@@ -1,46 +1,40 @@
 # ADR-L7 — GenAI observability architecture
 
-- Status: Accepted for the lab; production suitability not implied
-- Date: 2026-10-02
-- Context: HarnessEngineeringCourse, ABox/kagent lab cluster
+- Status: Accepted for the lab; production suitability is not implied
+- Date: 2026-10-04
+- Context: HarnessEngineeringCourse ABox/kagent Kubernetes cluster
 
 ## Context
 
-Lab 7 asks us to inspect OpenTelemetry, MLflow, and Phoenix, obtain an agent trace, and compare the three solutions for GenAI observability. We need a shared instrumentation/export path and distinct user-facing backends. The deployment is a constrained educational cluster; credentials must not enter Git, and prompt/response content should not be captured by default.
+Lab 7 requires inspecting OpenTelemetry (OTel), MLflow, and Phoenix, obtaining an agent trace, and comparing their value for GenAI observability. The cluster is an educational environment. Credentials must remain outside Git, and prompt, completion, and tool payloads must not be exported by default.
 
 ## Decision
 
-Use OpenTelemetry OTLP as the instrumentation and transport standard. Route kagent traces through one OpenTelemetry Collector and fan them out to:
+Instrument kagent with OTLP/gRPC to one OpenTelemetry Collector and fan out to three backends: Jaeger 2 over OTLP/gRPC, MLflow Tracing over OTLP/HTTP (experiment `0`), and Phoenix over OTLP/HTTP with a Bearer system key sourced from a Kubernetes Secret. Keep `otel.captureSensitiveContent: false` and apply a Collector transform that removes known `gcp.vertex.agent` request/response/tool payload attributes and generic GenAI prompt/completion/message/tool-argument fields before any exporter sees them. This second control is required: live traces showed that the kagent flag alone did not remove all raw payload attributes.
 
-1. Jaeger 2 as the vendor-neutral trace explorer and baseline backend.
-2. MLflow Tracing as the experiment/run-oriented GenAI tracing and evaluation surface.
-3. Phoenix as the LLM-observability-focused trace and project analysis surface.
-
-Use OTLP/gRPC from kagent to the Collector. The Collector exports to Jaeger via OTLP/gRPC and to MLflow and Phoenix via OTLP/HTTP. MLflow receives experiment ID `0`; Phoenix receives a Bearer system API key sourced only from a Kubernetes Secret. Keep `captureSensitiveContent: false`. Pin container versions in manifests. The lab Jaeger instance is ephemeral in-memory storage; MLflow uses a small PVC and SQLite and is a single-worker demo, not a high-availability deployment.
+The course-owned ABox source is published as the private GHCR artifact `ghcr.io/nerdeua/harnessengineeringcourse/abox/releases-llmd-embeddings:0.1.3`. Flux pulls it using a read-only registry Secret. The upstream `abox` Git repository was not committed to or modified by this course release workflow. Collector, Jaeger, and MLflow versions are pinned in the manifests. Jaeger uses ephemeral in-memory storage; MLflow is a single-worker SQLite demo backed by a small PVC.
 
 ## Alternatives considered
 
-- Direct agent-to-each-backend exporters: rejected because it multiplies agent configuration and couples agents to vendor endpoints.
-- Jaeger alone: rejected because it does not provide the same GenAI experiment/evaluation workflow as MLflow and Phoenix.
-- MLflow or Phoenix alone: rejected because a standard OTel collector plus a general trace backend gives a useful interoperable baseline and makes fan-out explicit.
-- Capture prompt/completion content: rejected for the default lab setup due to privacy and secret-leak risk.
+- Direct agent exporters to each backend: rejected because it duplicates agent configuration and couples agents to backend-specific endpoints.
+- Jaeger alone: rejected because it lacks MLflow's experiment/evaluation workflow and Phoenix's LLM-oriented project analysis.
+- MLflow or Phoenix alone: rejected because a standard OTel pipeline and general-purpose trace backend provide an interoperable baseline.
+- Capturing prompt/completion or tool payloads for the lab: rejected because it creates unnecessary privacy and secret-leak risk.
 
 ## Consequences
 
-- One OTLP endpoint centralizes routing and makes adding/removing an exporter independent of agent configuration.
-- Three backends duplicate trace storage and require exporter-specific auth, protocol, and retention configuration.
-- Jaeger demonstrates standard distributed-trace exploration; MLflow offers experiment-oriented GenAI traces; Phoenix provides an LLM-focused project view. Their UI and query semantics are not interchangeable.
-- With sensitive content capture off, trace metadata is safer but semantic debugging/evaluation context is limited.
-- Demo persistence and availability are limited: Jaeger data is lost on restart; MLflow's single replica/PVC is not production-grade.
+- One OTLP endpoint centralizes routing, transformation, and exporter configuration.
+- Three destinations duplicate telemetry and have distinct authentication, query, retention, and operational requirements.
+- OTel provides instrumentation/transport and Collector processing; Jaeger provides distributed trace exploration; MLflow associates traces with experiments and evaluations; Phoenix provides an LLM-focused trace/project UI. They complement rather than replace one another.
+- Payload redaction protects newly exported traces while retaining useful metadata such as model, operation, token counts, tool name, and span relationships. It limits prompt-level debugging by design.
+- This is a lab topology, not a production recommendation: Jaeger data is lost on restart, and the MLflow single replica/SQLite deployment is not highly available.
 
-## Verification and decision record
+## Verification
 
-Trace `644cf78a6f9aa2973256730a078d7832` was observed in Jaeger, MLflow experiment `0`, and the Phoenix default project. Jaeger and Phoenix showed the same three service/agent spans. MLflow returned eight traces in the query window, including the matching trace; the observed MLflow trace records were in OK state. See [the report](report-en.md) and [evidence](evidence/).
+On 2026-10-04, Flux reported `Ready=True` for course artifact `0.1.3` at digest `sha256:4beb600712399aa47700a75d25e9cc65185d027451d7b7fa8092be1e825cdd8f`. A read-only A2A request completed successfully through `k8s-agent` and invoked `k8s_get_resources`. Trace `1495d32fea9a55da394f79de961f3878` was found in Jaeger, MLflow experiment `0` (`OK`), and Phoenix project `default`. Jaeger showed agent, model (`gpt-4.1-mini`), and tool spans. Inspection of span attribute keys found no `gcp.vertex.agent.llm_request`, `gcp.vertex.agent.llm_response`, `gcp.vertex.agent.tool_call_args`, `gcp.vertex.agent.tool_response`, nor matching generic GenAI prompt/completion/message/tool-payload keys. See the [report](report-en.md) and [final verification evidence](evidence/final-verification.md).
 
-The agent CLI surfaced a JSON-RPC response decode error (`error.data` object could not be decoded as the expected typed array). The controller request itself returned HTTP 200 and generated exportable spans, but this run does not establish that the requested task completed successfully or that LLM/tool semantic spans were emitted. This is a known limitation of the evidence, not evidence of a successful answer.
+## Historical data and follow-up
 
-Revalidation on 2026-10-03: a direct read-only A2A stream reached `k8s-agent`, but the model call failed with OpenAI `401 invalid_api_key`. The ModelConfig points to `kagent/kagent-openai` (`OPENAI_API_KEY`); the Secret value was not inspected. Flux's app Kustomization also remains unhealthy because the Phoenix HelmRelease is Stalled. Keep the architecture decision, but treat successful agent execution and durable GitOps tracing as pending until credentials are corrected, a fresh trace is compared in all three backends, and the reviewed course artifact is published and reconciled.
+Before this release, traces exported while only `captureSensitiveContent: false` was configured contained raw model/tool payload attributes. The new Collector transform prevents those fields from being exported going forward, but does not retroactively erase already stored traces. Existing pre-redaction records in Jaeger, MLflow, or Phoenix must be treated as sensitive and removed under the operators' retention procedures if deletion is required; no backend-wide purge was performed as part of this lab.
 
-Follow-up on 2026-10-03: a targeted reconcile of the already-running Phoenix HelmRelease succeeded, and the app Kustomization returned Healthy on upstream artifact `0.9.5`. This confirms the earlier Phoenix status was recoverable without changing its spec; it does not resolve the model credential or course artifact gates.
-
-After the user rotated the OpenAI key, a direct A2A read-only node-list task completed and returned the three cluster nodes as Ready. The currently reconciled kagent HelmRelease still lacks the course `otel` values; therefore this proves agent execution, not fresh GenAI trace ingestion. Durable tracing and same-run backend comparison remain gated on course artifact publication and reconciliation.
+The Collector configuration is mounted through a ConfigMap `subPath`, which does not trigger an automatic pod restart when the ConfigMap changes. After a future config update, restart the Collector and verify the rollout before relying on the new processor. Do not bypass Flux for durable changes.

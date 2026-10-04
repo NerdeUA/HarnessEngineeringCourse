@@ -40,6 +40,11 @@ require_text releases/lab7/kustomization.yaml '  - otel-collector.yaml'
 require_text releases/lab7/otel-collector.yaml 'endpoint: jaeger.lab7.svc.cluster.local:4317'
 require_text releases/lab7/otel-collector.yaml 'traces_endpoint: http://phoenix-svc.phoenix.svc.cluster.local:6006/v1/traces'
 require_text releases/lab7/otel-collector.yaml 'traces_endpoint: http://mlflow.lab7.svc.cluster.local:5000/v1/traces'
+require_text releases/lab7/otel-collector.yaml 'transform/redact_sensitive_genai_payload:'
+require_text releases/lab7/otel-collector.yaml 'delete_key(span.attributes, "gcp.vertex.agent.llm_request")'
+require_text releases/lab7/otel-collector.yaml 'delete_key(span.attributes, "gcp.vertex.agent.llm_response")'
+require_text releases/lab7/otel-collector.yaml 'delete_key(span.attributes, "gcp.vertex.agent.tool_call_args")'
+require_text releases/lab7/otel-collector.yaml 'delete_key(span.attributes, "gcp.vertex.agent.tool_response")'
 for file in namespace.yaml jaeger.yaml mlflow.yaml otel-collector.yaml kustomization.yaml; do
   cmp -s "$course_root/docs/lab-7/manifests/$file" "$root/releases/lab7/$file" || \
     fail "vendored Lab 7 manifest differs from docs/lab-7/manifests/$file"
